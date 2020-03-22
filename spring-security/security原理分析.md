@@ -175,18 +175,105 @@ AuthenticationException。
 
 #### Authorization ：
 
-AccessDecisionManager
+
+
+AccessDecisionManager是入口，然后具体是否有权限是调用AccessDecisionVoter进行判断。
+
+> 为什么这样设计？
+>
+> 因为这里`AccessDecisionManager`有三个实现：
+>
+> AffirmativeBased一种只要一个voter返回有权限即可。
+>
+> ConsensusBased大多数voter返回有权限，就说明有权限
+>
+> UnConsensusBased要求必须所有的voter都返回或者弃权才行。
+
+
+
+这里decide方法被
+
+org.springframework.security.web.access.intercept.FilterSecurityInterceptor#invoke -》
+
+org.springframework.security.access.intercept.AbstractSecurityInterceptor#beforeInvocation
+
+调用。
+
+```java
+
+public interface AccessDecisionManager {
+	void decide(Authentication authentication, Object object,
+			Collection<ConfigAttribute> configAttributes) throws AccessDeniedException,
+			InsufficientAuthenticationException;
+	boolean supports(ConfigAttribute attribute);
+	boolean supports(Class<?> clazz);
+}
+```
 
 AccessDecisionVoter：
+
 ```java
 
 boolean supports(ConfigAttribute attribute);
 
 boolean supports(Class<?> clazz);
-
-int vote(Authentication authentication, S object,
-        Collection<ConfigAttribute> attributes);
+//authentication表示认证处理后，保存的认证信息
+//object是需要判断是否能获取的资源
+//ConfigAttribute 是用于access-control判断的信息，比如角色-url列表
+int vote(Authentication authentication, S object,Collection<ConfigAttribute> attributes);
 ```
+
+
+
+默认的处理类：只要返回积极响应即可
+
+org.springframework.security.access.vote.AffirmativeBased
+
+
+
+#### springboot中AccessDecisionManager的创建过程
+
+>AbstractInterceptUrlConfigurercreate->
+>
+>FilterSecurityInterceptor ->
+>
+>getAccessDecisionManager ->
+>
+>AffirmativeBased
+
+
+
+```java
+private FilterSecurityInterceptor createFilterSecurityInterceptor(H http,
+			FilterInvocationSecurityMetadataSource metadataSource,
+			AuthenticationManager authenticationManager) throws Exception {
+		FilterSecurityInterceptor securityInterceptor = new FilterSecurityInterceptor();
+		securityInterceptor.setSecurityMetadataSource(metadataSource);
+		securityInterceptor.setAccessDecisionManager(getAccessDecisionManager(http));
+		securityInterceptor.setAuthenticationManager(authenticationManager);
+		securityInterceptor.afterPropertiesSet();
+		return securityInterceptor;
+	}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ConfigAttributes:
@@ -368,14 +455,18 @@ public class ApplicationConfigurerAdapter extends WebSecurityConfigurerAdapter {
 
 
 
-| Alias          | Filter Class            | Namespace Element or Attribute      |
-| -------------- | ----------------------- | ----------------------------------- |
-| CHANNEL_FILTER | ChannelProcessingFilter | http/intercept-url@requires-channel |
-|SECURITY_CONTEXT_FILTER | SecurityContextPersistenceFilter|http 
-|CONCURRENT_SESSION_FILTER | ConcurrentSessionFilter|session-management/concurrency-control |
-|HEADERS_FILTER |HeaderWriterFilter |http/headers |
-|CSRF_FILTER |CsrfFilter |http/csrf |
-|LOGOUT_FILTER |LogoutFilter | http/logout|
+| Alias                     | Filter Class                     | Namespace Element or Attribute         |
+| ------------------------- | -------------------------------- | -------------------------------------- |
+| CHANNEL_FILTER            | ChannelProcessingFilter          | http/intercept-url@requires-channel    |
+| SECURITY_CONTEXT_FILTER   | SecurityContextPersistenceFilter | http                                   |
+| CONCURRENT_SESSION_FILTER | ConcurrentSessionFilter          | session-management/concurrency-control |
+| HEADERS_FILTER            | HeaderWriterFilter               | http/headers                           |
+| CSRF_FILTER               | CsrfFilter                       | http/csrf                              |
+| LOGOUT_FILTER             | LogoutFilter                     | http/logout                            |
+|                           |                                  |                                        |
+|                           |                                  |                                        |
+|                           |                                  |                                        |
+
 |X509_FILTER |X509AuthenticationFilter| http/x509  |
 |PRE_AUTH_FILTER |AbstractPreAuthenticatedProcessingFilter  |N/A |
 |CAS_FILTER |CasAuthenticationFilter |N/A  |
@@ -477,3 +568,27 @@ ProviderManager可以有一个父的 AuthenticationProvider实现，当所有的
 }
 ```
 这是在spingboot中去配置一个全局的 authenticationManger
+
+
+
+
+
+
+
+
+
+### security-cas
+
+filter进来
+
+requestMatcher
+
+privoderManager
+
+authenticationProvider
+
+- [ ] jdbc\security-cas
+
+认证信息保存 tokenRepositery
+
+认证页面

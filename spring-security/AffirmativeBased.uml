@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>JAVA</ID>
+  <OriginalElement>org.springframework.security.access.vote.AffirmativeBased</OriginalElement>
+  <nodes>
+    <node x="66.09375" y="255.0">org.springframework.security.access.vote.AffirmativeBased</node>
+    <node x="270.09375" y="255.0">org.springframework.security.access.vote.ConsensusBased</node>
+    <node x="0.0" y="85.0">org.springframework.context.MessageSourceAware</node>
+    <node x="58.0" y="0.0">org.springframework.beans.factory.Aware</node>
+    <node x="243.0" y="85.0">org.springframework.security.access.AccessDecisionManager</node>
+    <node x="212.0" y="170.0">org.springframework.security.access.vote.AbstractAccessDecisionManager</node>
+    <node x="471.09375" y="255.0">org.springframework.security.access.vote.UnanimousBased</node>
+    <node x="501.0" y="85.0">org.springframework.beans.factory.InitializingBean</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="org.springframework.security.access.vote.ConsensusBased" target="org.springframework.security.access.vote.AbstractAccessDecisionManager">
+      <point x="0.0" y="-17.5" />
+      <point x="360.59375" y="230.0" />
+      <point x="362.0" y="230.0" />
+      <point x="0.0" y="17.5" />
+    </edge>
+    <edge source="org.springframework.security.access.vote.AbstractAccessDecisionManager" target="org.springframework.context.MessageSourceAware">
+      <point x="-100.0" y="-17.5" />
+      <point x="262.0" y="145.0" />
+      <point x="111.5" y="145.0" />
+      <point x="0.0" y="17.5" />
+    </edge>
+    <edge source="org.springframework.security.access.vote.AffirmativeBased" target="org.springframework.security.access.vote.AbstractAccessDecisionManager">
+      <point x="0.0" y="-17.5" />
+      <point x="158.09375" y="230.0" />
+      <point x="262.0" y="230.0" />
+      <point x="-100.0" y="17.5" />
+    </edge>
+    <edge source="org.springframework.security.access.vote.AbstractAccessDecisionManager" target="org.springframework.security.access.AccessDecisionManager">
+      <point x="0.0" y="-17.5" />
+      <point x="0.0" y="17.5" />
+    </edge>
+    <edge source="org.springframework.security.access.vote.AbstractAccessDecisionManager" target="org.springframework.beans.factory.InitializingBean">
+      <point x="100.0" y="-17.5" />
+      <point x="462.0" y="145.0" />
+      <point x="585.5" y="145.0" />
+      <point x="0.0" y="17.5" />
+    </edge>
+    <edge source="org.springframework.context.MessageSourceAware" target="org.springframework.beans.factory.Aware">
+      <point x="0.0" y="-17.5" />
+      <point x="0.0" y="17.5" />
+    </edge>
+    <edge source="org.springframework.security.access.vote.UnanimousBased" target="org.springframework.security.access.vote.AbstractAccessDecisionManager">
+      <point x="0.0" y="-17.5" />
+      <point x="563.59375" y="230.0" />
+      <point x="462.0" y="230.0" />
+      <point x="100.0" y="17.5" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic Group" zoom="1.2000000000000002" x="334.9999999999999" y="144.99999999999997" />
+  <SelectedNodes />
+  <Categories />
+  <SCOPE>All</SCOPE>
+  <VISIBILITY>private</VISIBILITY>
+</Diagram>
+

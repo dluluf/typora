@@ -15,21 +15,21 @@
 
 
 
-```
+```java
  /**
      * java 8 四大核心函数式接口
      * Consumer<T>
      *     void accept(T t);
      * Supplier<T>
      *     T get();
-     *  Function<T, R>
-     *      R apply(T t);
-     *  Predicate<T>
-     *      test(T t);
+     * Function<T, R>
+     *     R apply(T t);
+     * Predicate<T>
+     *     test(T t);
      */
 ```
 
-```
+```java
  /**
      * lambda 的其他表现形式：
      * 方法引用：（这里lambda体就是这个函数式接口的实现）
