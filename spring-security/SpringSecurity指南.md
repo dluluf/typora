@@ -163,12 +163,12 @@ public Authentication authenticate(Authentication authentication)
 >Sometimes an application has logical groups of protected resources (e.g. all web resources that match a path pattern `/api/**`), and each group can have its own dedicated `AuthenticationManager`. Often, each of those is a `ProviderManager`, and they share a parent. The parent is then a kind of "global" resource, acting as a fallback for all providers.
 
 
-
-<img src="C:\Users\Administrator\Pictures\aspeed_spring_security\authentication.png" style="zoom:50%;" />
-
+![authenticationManager](https://img-blog.csdnimg.cn/2020040923013720.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzI1NzE5Njg5,size_16,color_FFFFFF,t_70)
 
 
-##### 总
+
+
+
 
 > 总结
 >
@@ -209,7 +209,6 @@ org.springframework.security.access.intercept.AbstractSecurityInterceptor#before
 #### AccessDecisionManager:
 
 ```java
-
 public interface AccessDecisionManager {
 	void decide(Authentication authentication, Object object,
 			Collection<ConfigAttribute> configAttributes) throws AccessDeniedException,
@@ -222,7 +221,6 @@ public interface AccessDecisionManager {
 #### AccessDecisionVoter:
 
 ```java
-
 boolean supports(ConfigAttribute attribute);
 
 boolean supports(Class<?> clazz);
@@ -279,7 +277,7 @@ private FilterSecurityInterceptor createFilterSecurityInterceptor(H http,
 
 #### DelegatingFilterProxy 
 
-![](C:\Users\Administrator\Pictures\aspeed_spring_security\securityfilterchain.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200409230431641.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzI1NzE5Njg5,size_16,color_FFFFFF,t_70)
 
 DelegatingFilterProxy （Spring-Web） ->FilterChainProxy (Spring-Security)->
 
@@ -304,7 +302,7 @@ DelegatingFilterProxy 把处理的执行交给了 FilterChainProxy（注意这�
 >
 > 默认的**`DefaultSecurityFilterChain`**
 
-![](C:\Users\Administrator\Pictures\aspeed_spring_security\security-filters-dispatch.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200409230404505.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzI1NzE5Njg5,size_16,color_FFFFFF,t_70)
 
 一般springboot应用中有6条filter chains,第一个是用来控制静态文件和错误页面的（可以通过配置security.ignored来定义资源路径）。
 
@@ -357,7 +355,7 @@ public class ApplicationConfigurerAdapter extends WebSecurityConfigurerAdapter {
 
 ### 什么时候开始进入到认证处理流程
 
-[`ExceptionTranslationFilter`](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/web/access/ExceptionTranslationFilter.html)
+
 
 > 其实这里是认证处理的发起Filter,当用户第一次从浏览器访问受限资源时，因为其他认证Filter只对自己关注的AuthenticationToken进行处理，也就是说第一次访问时，这些Filter是去处理的，只有这个Filter发现如果用户没有进行认证，则进行相应的处理。比如：重定向到登入页面。
 
@@ -365,20 +363,19 @@ public class ApplicationConfigurerAdapter extends WebSecurityConfigurerAdapter {
 
 #### 处理流程
 
-![认证异常处理](C:\Users\Administrator\Pictures\aspeed_spring_security\exceptiontranslationfilter.png)
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200409230525770.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzI1NzE5Njg5,size_16,color_FFFFFF,t_70)
 
 
 
-> The [`ExceptionTranslationFilter`](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/web/access/ExceptionTranslationFilter.html) allows translation of [`AccessDeniedException`](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/access/AccessDeniedException.html) and [`AuthenticationException`](https://docs.spring.io/spring-security/site/docs/current/api//org/springframework/security/core/AuthenticationException.html) into HTTP responses.
+> The `ExceptionTranslationFilter`allows translation of `AccessDeniedException` and `AuthenticationException`into HTTP responses.
 
 
-
-- ![number 1](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/images/icons/number_1.png) First, the `ExceptionTranslationFilter` invokes `FilterChain.doFilter(request, response)` to invoke the rest of the application.
-- ![number 2](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/images/icons/number_2.png) If the user is not authenticated or it is an `AuthenticationException`, then *Start Authentication*.
-  - The [SecurityContextHolder](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#servlet-authentication-securitycontextholder) is cleared out
-  - The `HttpServletRequest` is saved in the [`RequestCache`](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/web/savedrequest/RequestCache.html). When the user successfully authenticates, the `RequestCache` is used to replay the original request.
+- First, the `ExceptionTranslationFilter` invokes `FilterChain.doFilter(request, response)` to invoke the rest of the application.
+- If the user is not authenticated or it is an `AuthenticationException`, then *Start Authentication*.
+  - The SecurityContextHolder is cleared out
+  - The `HttpServletRequest` is saved in the `RequestCache`. When the user successfully authenticates, the `RequestCache` is used to replay the original request.
   - The `AuthenticationEntryPoint` is used to request credentials from the client. For example, it might redirect to a login page or send a `WWW-Authenticate` header.
-- ![number 3](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/images/icons/number_3.png) Otherwise if it is an `AccessDeniedException`, then *Access Denied*. The `AccessDeniedHandler` is invoked to handle access denied.
+- Otherwise if it is an `AccessDeniedException`, then *Access Denied*. The `AccessDeniedHandler` is invoked to handle access denied.
 
 
 
@@ -497,7 +494,6 @@ MySecurityChainConfig extends WebSecurityConfigurerAdapter{
 ### 配置全局共享对象
 
 ```java
-
 @Configuration
 public class ApplicationSecurity extends WebSecurityConfigurerAdapter {
    ... // web stuff here
@@ -528,14 +524,14 @@ public class ApplicationSecurity extends WebSecurityConfigurerAdapter {
 - CasAuthenticationFilter
 - OAuth2LoginAuthenticationFilter
 - Saml2WebSsoAuthenticationFilter
-- [`UsernamePasswordAuthenticationFilter`](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#servlet-authentication-usernamepasswordauthenticationfilter)
+- `UsernamePasswordAuthenticationFilter`
 - ConcurrentSessionFilter
 - OpenIDAuthenticationFilter
 - DefaultLoginPageGeneratingFilter
 - DefaultLogoutPageGeneratingFilter
-- [`DigestAuthenticationFilter`](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#servlet-authentication-digest)
+- `DigestAuthenticationFilter`
 - BearerTokenAuthenticationFilter
-- [`BasicAuthenticationFilter`](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#servlet-authentication-basic)
+- `BasicAuthenticationFilter`
 - RequestCacheAwareFilter
 - SecurityContextHolderAwareRequestFilter
 - JaasApiIntegrationFilter
@@ -543,23 +539,23 @@ public class ApplicationSecurity extends WebSecurityConfigurerAdapter {
 - AnonymousAuthenticationFilter
 - OAuth2AuthorizationCodeGrantFilter
 - SessionManagementFilter
-- [`ExceptionTranslationFilter`](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#servlet-exceptiontranslationfilter)
-- [`FilterSecurityInterceptor`](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#servlet-authorization-filtersecurityinterceptor)
+- `ExceptionTranslationFilter`
+- `FilterSecurityInterceptor`
 - SwitchUserFilter
 
 
 
 ## **Spring-Security支持的所有的 Authentication Mechanisms**
 
-- [Username and Password](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#servlet-authentication-unpwd) - how to authenticate with a username/password
-- [OAuth 2.0 Login](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#oauth2login) - OAuth 2.0 Log In with OpenID Connect and non-standard OAuth 2.0 Login (i.e. GitHub)
-- [SAML 2.0 Login](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#servlet-saml2) - SAML 2.0 Log In
-- [Central Authentication Server (CAS)](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#servlet-cas) - Central Authentication Server (CAS) Support
-- [Remember Me](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#servlet-rememberme) - How to remember a user past session expiration
-- [JAAS Authentication](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#servlet-jaas) - Authenticate with JAAS
-- [OpenID](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#servlet-openid) - OpenID Authentication (not to be confused with OpenID Connect)
-- [Pre-Authentication Scenarios](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#servlet-preauth) - Authenticate with an external mechanism such as [SiteMinder](https://www.siteminder.com/) or Java EE security but still use Spring Security for authorization and protection against common exploits.
-- [X509 Authentication](https://docs.spring.io/spring-security/site/docs/5.3.1.RELEASE/reference/html5/#servlet-x509) - X509 Authentication
+- Username and Password - how to authenticate with a username/password
+- OAuth 2.0 Login- OAuth 2.0 Log In with OpenID Connect and non-standard OAuth 2.0 Login (i.e. GitHub)
+- SAML 2.0 Login - SAML 2.0 Log In
+- Central Authentication Server (CAS) - Central Authentication Server (CAS) Support
+- Remember Me - How to remember a user past session expiration
+- JAAS Authentication- Authenticate with JAAS
+- OpenID - OpenID Authentication (not to be confused with OpenID Connect)
+- Pre-Authentication Scenarios - Authenticate with an external mechanism such as SiteMinder or Java EE security but still use Spring Security for authorization and protection against common exploits.
+- X509 Authentication - X509 Authentication
 
 
 
