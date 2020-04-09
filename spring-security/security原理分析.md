@@ -1,18 +1,63 @@
 
 
+
+
+## Spring-Security 
+
+[https://spring.io/guides/topicals/spring-security-architecture/](https://spring.io/guides/topicals/spring-security-architecture/) 
+
+
+
 ### 一个很重要的点：
 
 一般框架或者插件，有一个默认的处理类。但这个实例不直接处理业务逻辑，而是交给这个实例中管理的某个对象去处理。这是设计模式的体现。
 
-
-
 比如在spring-security中，`ProviderManager` 是安全管理的入口，但是`ProviderManager`中不直接处理（当然这里也可以直接去执行认证操作，但是一般不这样处理），而是由它管理的 **`AuthenticationProvider` 's** 去处理具体的逻辑。而这里`AuthenticationProvider`是一个接口，需要提供具体的实现。
+
+### 调用过程分析
+
+org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter#attemptAuthentication
+
+org.springframework.security.authentication.AuthenticationManager#authenticate
+
+`attemptAuthentication` 的实现就是对认证信息的封装，封装成  <font color="red"> `Authentication `</font> 对象
+
+- 比如 `org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter`
+
+```java
+
+/**
+ * UsernamePasswordAuthenticationFilter
+ * 这里就是将 username password 封装了
+ */
+public Authentication attemptAuthentication(HttpServletRequest request,
+			HttpServletResponse response) throws AuthenticationException {
+		if (postOnly && !request.getMethod().equals("POST")) {
+			throw new AuthenticationServiceException(
+					"Authentication method not supported: " + request.getMethod());
+		}
+		String username = obtainUsername(request);
+		String password = obtainPassword(request);
+		if (username == null) {
+			username = "";
+		}
+		if (password == null) {
+			password = "";
+		}
+		username = username.trim();
+		UsernamePasswordAuthenticationToken authRequest = new UsernamePasswordAuthenticationToken(username, password);
+
+		// Allow subclasses to set the "details" property
+		setDetails(request, authRequest);
+		return this.getAuthenticationManager().authenticate(authRequest);
+	}
+```
 
 
 
 ### 从 authentication 和 authorization 开始
 
-spring-security中的authentication 和authorization
+
 
 #### Authentication：
 ```java
@@ -26,6 +71,7 @@ public interface AuthenticationManager {
 ```
 ```java
 //默认实现类
+//
 public class ProviderManager implements AuthenticationManager, MessageSourceAware,
 		InitializingBean {
 
@@ -55,7 +101,7 @@ public interface AuthenticationProvider {
 
         Authentication authenticate(Authentication authentication)
                         throws AuthenticationException;
-
+		//通过该接口，实现选择支持的认证类型
         boolean supports(Class<?> authentication);
 
 }
@@ -81,7 +127,7 @@ for (AuthenticationProvider provider : getProviders()) {
 }
 ```
 
-源码：
+
 
 ```java
 public Authentication authenticate(Authentication authentication)
@@ -166,8 +212,36 @@ public Authentication authenticate(Authentication authentication)
 
 ##### Parent AuthenticationManager
 
-`ProviderManager`管理了一个父的`AuthenticationManager`，作为最后的兜底。就是说当所有的认证机制都无法判断的时候，即返回为空的时候，此时可以通过父类来处理。如果没有定义这个父类，是会抛出
-AuthenticationException。
+> `ProviderManager`管理了一个父的`AuthenticationManager`，作为最后的兜底。就是说当所有的认证机制都无法判断的时候，即返回为空的时候，此时可以通过父类来处理。如果没有定义这个父类，是会抛出
+> AuthenticationException。
+
+
+
+>Sometimes an application has logical groups of protected resources (e.g. all web resources that match a path pattern `/api/**`), and each group can have its own dedicated `AuthenticationManager`. Often, each of those is a `ProviderManager`, and they share a parent. The parent is then a kind of "global" resource, acting as a fallback for all providers.
+
+<img src="C:\Users\Administrator\Pictures\aspeed_spring_security\authentication.png" style="zoom:50%;" />
+
+##### 总结
+
+这里的意思就是，比如
+
+api/resources1,api/resources2,api/resources3
+
+这里都matche  api/**,但是对于resources1 、 resources2、都有不同的认证处理，但是他们可以共用同一个parent ProviderManager。
+
+这里对每个resources的处理，其实也是细化了处理过程。最初的执行链还是api/** match的那一条链，只不过在这个链下又多了更多细化的处理。
+
+
+
+##### 认证处理的结果
+
+三种情况：
+
+- 成功
+- 不能决定
+- 异常
+
+如果返回认证异常，我们可以捕获后跳转到认证页面，比如登入页面，或者返回认证错误页面，在接口调用时，可以返回401响应等等
 
 
 
@@ -260,24 +334,7 @@ private FilterSecurityInterceptor createFilterSecurityInterceptor(H http,
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-ConfigAttributes:
-
+#### ConfigAttributes:
 
 对象S就是我们需要授权的对象，比如对一个方法的授权或者对一个url的授权。
 这里ConfigAttributes是对授权对象做了一个包装，也就是说授权对象实现了该类，然后我们可以根据在里面添加的属性值，来判断该对象拥有什么级别的权限。比如eunomia中的所有权限、无权限等等。
@@ -301,58 +358,9 @@ spring-security框架提供的安全认证及授权
 
 
 
-这个是在默认的链上添加新的链
-```java
-
-@Configuration
-@Order(SecurityProperties.BASIC_AUTH_ORDER - 10)
-public class ApplicationConfigurerAdapter extends WebSecurityConfigurerAdapter {
-  @Override
-  protected void configure(HttpSecurity http) throws Exception {
-    http.antMatcher("/foo/**")
-     ...;
-  }}
-```
 
 
-
-
-
-
-如果嵌入到web应用中，就是通过filter来实现
-
-spring-security如何应用，其原理也是通过filter.
-
-接下来就看一下这个filter。
-
-
-
-filter顺序的控制，两种方式
-1.@Order或者实现 Order接口
-2.通过FilterResigstrationBean的api设置
-
-
-
-springboot应用中默认注入了@Bean
-FilterChainProxy
-
-这个类中可以管理很多的filters来实现很多功能。
-
-
-整体自上而下的过程：
-![0c63cd2617c6907c1b30ef37802886cd.png](en-resource://database/410:1)
-
-![3f60f83afd640295241ce31d230f60e8.png](en-resource://database/412:1)
-
-
-![95561c170de539398957b14db5d3318a.png](en-resource://database/414:1)
-
-
-
-![19992a59bb9ffbc0b14ed45613139986.png](en-resource://database/416:1)
-
-
-方法级别的安全处理：
+### 方法级别的安全处理：
 
 ```java
 
@@ -373,11 +381,11 @@ public class SampleSecureApplication {}
 
 }
 ```
-当方法被注解后，创建bean的时候会生成一个代理类，则当被调用时，会经过安全检查相关的拦截器的处理。当被拦截是，则返回
-AccessDeniedException 。
+当方法被注解后，创建bean的时候会生成一个代理类，则当被调用时，会经过安全检查相关的拦截器的处理。当被拦截是，则返回 `AccessDeniedException` 。
 
+#### @PreAuthorize 
 
-@PreAuthorize and @PostAuthorize
+####  @PostAuthorize
 
 这两个注解，可以使用表达式语言动态获取是否通过安全检查。
 
@@ -385,19 +393,119 @@ AccessDeniedException 。
 
 
 
+### 从Servlet容器到Spring-Security
+
+#### 入口
+
+> web安全是通过filter来实现的，spring-security也是基于 Servlet Filters 来实现的。spring-security框架是一个filter，这个filter添加进了web filter chain 中。
+
+<img src="C:\Users\Administrator\Pictures\aspeed_spring_security\security-filters.png" style="zoom:50%;" />
+
+
+
+DelegatingFilterProxy （Spring-Web） ->FilterChainProxy (Spring-Security)->
+
+这里看出Spring是通过DelegatingFilterProxy来整合Spring-Security的
+>这个类在我们的web.xml配置中使用的，当我们定义的filter为DelegatingFilterProxy，此时呢，所有的请求filter,都会去容器中找一个叫springsecurityfilterchain的bean来处理。这里是方便我们去处理web应用，当我们需要一个filter来处理，此时我们只需要在spring相关的配置文件中定义一个bean,id为`springSecurityFilterChain` ，而在web.xml中写成DelegatingFilterProxy。
+
+DelegatingFilterProxy:不需要是一个spring 的bean,也就是说在不使用spring容器开发的应用中，可以是有该类。或者说在spring容器还没有初始化的时候，可以使用该类来处理。
+
+DelegatingFilterProxy 把处理的执行交给了 FilterChainProxy（注意这个类是spring-security中的类，然后会有很多这样的类去做具体的filter操作），这个bean一般使用 `springSecurityFilterChain` 这个bean id来做配置。
+
+>FilterChainProxy这里代理中包含很多的filter(关于spring-security安全认证和权限控制的filters),当然也可以是不同的filter chains,不过一个请求只会被一个filter chain处理，一般是根据请求路径来判断交给那个filter chain处理。
+>这里就是我们需要关注和定义的filters
+
+
+
+#### SecurityFilterChain接口
+
+> spring-security可以有很多SecurityFilterChain，但是最终只有一个会被匹配。
+>
+> 可以用于oauth整合、jwt整合，也可以用于处理不需要安全处理的路径。
+>
+> **也就是说所有的链都必须实现该类**
+>
+> 默认的**`DefaultSecurityFilterChain`**
+
+
+
+<img src="C:\Users\Administrator\Pictures\aspeed_spring_security\security-filters-dispatch.png" style="zoom:50%;" />
+
+
+
+一般springboot应用中有6条filter chains,第一个是用来控制静态文件和错误页面的（可以通过配置security.ignored来定义资源路径）。
+
+最后一个filter chain 默认会对 `/**` 进行控制（包括认证、授权、异常处理、session处理、请求头处理等等）。
+
+默认最后一个chain有11个filters,不过一般我们不需要太关注这些filters。
+
+##### `IgnoredPathsWebSecurityConfigurerAdapter`
+
 ```java
-SecurityConfigurerAdapter
+@Order(SecurityProperties.IGNORED_ORDER)
+	private static class IgnoredPathsWebSecurityConfigurerAdapter
+			implements WebSecurityConfigurer<WebSecurity> {
 ```
 
 
 
-### spring-security 
+>默认的springBoot security项目中，其实对静态资源的处理和error路径的处理，使用的同一个filter chain :`IgnoredPathsWebSecurityConfigurerAdapter`，它的order 为最高的。HIGHEST_PRECEDENCE = Integer.MIN_VALUE，所以这是一个回去匹配的filter chain。
+>
+>当然这里还有其他的filter  chain ，个数好像是6个。
 
 
-#### Web Security 的原理
-> web安全是通过filter来实现的，spring-security也是基于 Servlet Filters 来实现的。spring-security框架是一个filter，这个filter添加进了web filter chain 中。
 
-![](C:\Users\Administrator\Pictures\aspeed_spring_security\security-filters.png)
+
+
+
+在spring-security中新增一个filter chain(其实也是覆盖的意思，比如原来的filter针对的是 /** ，这里我们写了一个/foo/** ,此时如果请求是/foo/，则只会经过该filter chain；如果是其他的请求，才会使用原来默认的chain )：
+
+```java
+
+@Configuration@Order(SecurityProperties.BASIC_AUTH_ORDER - 10)
+public class ApplicationConfigurerAdapter extends WebSecurityConfigurerAdapter {
+  @Override
+  protected void configure(HttpSecurity http) throws Exception {
+    http.antMatcher("/foo/**")
+     ...;
+  }}
+```
+
+
+
+> **注意**：
+> 如果想在spring-security 的chain使用filter Bean，
+>
+> 1.不要通过使用@bean 方式去添加
+>
+> 2.如果使用FilterRegistrationBean注册filter为一个Bean,则需要显示设置其不被容器加载。
+>
+> 因为这两种方式都会将filter应用于整个web 容器中。
+>
+> 而添加自定义的security filter，需要通过 
+>
+> WebSecurityConfigurerAdapter#configure()
+>
+> WebSecurityConfigurerAdapter#init（）
+
+
+
+#### **Standard Filter Aliases and Ordering**
+
+org.springframework.security.config.annotation.web.builders.FilterComparator
+
+
+
+
+
+#### Springboot中自定义Web 容器filter顺序的控制
+
+1.@Order或者实现 Order接口
+2.通过FilterResigstrationBean的api设置
+
+
+
+#### SpringSecurity中自定义Filter顺序控制
 
 
 
@@ -414,167 +522,67 @@ public interface OrderedFilter extends Filter, Ordered {
 
 
 
-DelegatingFilterProxy （Spring-Web） ->FilterChainProxy (Spring-Security)->
-
-这里看出Spring是通过DelegatingFilterProxy来整合Spring-Security的
->这个类在我们的web.xml配置中使用的，当我们定义的filter为DelegatingFilterProxy，此时呢，所有的请求filter,都会去容器中找一个叫springsecurityfilterchain的bean来处理。这里是方便我们去处理web应用，当我们需要一个filter来处理，此时我们只需要在spring相关的配置文件中定义一个bean,id为`springSecurityFilterChain` ，而在web.xml中写成DelegatingFilterProxy。
-
-DelegatingFilterProxy:不需要是一个spring 的bean,也就是说在不使用spring容器开发的应用中，可以是有该类。或者说在spring容器还没有初始化的时候，可以使用该类来处理。
-
-DelegatingFilterProxy 把处理的执行交给了 FilterChainProxy（注意这个类是spring-security中的类，然后会有很多这样的类去做具体的filter操作），这个bean一般使用 `springSecurityFilterChain` 这个bean id来做配置。
-
->FilterChainProxy这里代理中包含很多的filter(关于spring-security安全认证和权限控制的filters),当然也可以是不同的filter chains,不过一个请求只会被一个filter chain处理，一般是根据请求路径来判断交给那个filter chain处理。
->这里就是我们需要关注和定义的filters。
-
-![95561c170de539398957b14db5d3318a.png](en-resource://database/396:1)
 
 
+### authenticationManager 认证接口的调用
 
-一般springboot应用中有6条filter chains,前5个是用来控制静态文件和错误页面的（可以通过配置security.ignored来定义资源路径）。最后一个filter chain 默认会对 `/**` 进行控制（包括认证、授权、异常处理、session处理、请求头处理等等）。默认最后一个chain有11个filters,不过一般我们不需要太关注这些filters。
+从哪里，什么时候开始调用的？
 
+### SpringSecurity在SpringBoot中应用：
 
-在spring-security中新增一个filter chain(其实也是覆盖的意思，比如原来的filter针对的是 /** ，这里我们写了一个/foo/** ,此时如果请求是/foo/，则只会经过该filter chain；如果是其他的请求，才会使用原来默认的chain )：
+#### 如何添加一个新链
+
+继承`WebSecurityConfigurerAdapter`
 
 ```java
-
-@Configuration@Order(SecurityProperties.BASIC_AUTH_ORDER - 10)
+@Configuration
+//顺序很重要，必须定义顺序，具体添加在那个位置根据业务情况。
+@Order(SecurityProperties.BASIC_AUTH_ORDER - 10)
 public class ApplicationConfigurerAdapter extends WebSecurityConfigurerAdapter {
   @Override
   protected void configure(HttpSecurity http) throws Exception {
     http.antMatcher("/foo/**")
      ...;
   }}
+
 ```
 
->**注意**：
->如果想在spring-security 的chain中添加filter，不要通过使用@bean 或者 FilterRegistrationBean 方式去添加，这两种方式都会将filter应用于整个web 的filter chains中，而不是spring-security 的chain中。应该通过继承 WebSecurityConfigurerAdapter 这种方式添加新的chain。
+#### 如何覆盖默认配置
 
-
-
-
-
-
-
-| Alias                     | Filter Class                     | Namespace Element or Attribute         |
-| ------------------------- | -------------------------------- | -------------------------------------- |
-| CHANNEL_FILTER            | ChannelProcessingFilter          | http/intercept-url@requires-channel    |
-| SECURITY_CONTEXT_FILTER   | SecurityContextPersistenceFilter | http                                   |
-| CONCURRENT_SESSION_FILTER | ConcurrentSessionFilter          | session-management/concurrency-control |
-| HEADERS_FILTER            | HeaderWriterFilter               | http/headers                           |
-| CSRF_FILTER               | CsrfFilter                       | http/csrf                              |
-| LOGOUT_FILTER             | LogoutFilter                     | http/logout                            |
-|                           |                                  |                                        |
-|                           |                                  |                                        |
-|                           |                                  |                                        |
-
-|X509_FILTER |X509AuthenticationFilter| http/x509  |
-|PRE_AUTH_FILTER |AbstractPreAuthenticatedProcessingFilter  |N/A |
-|CAS_FILTER |CasAuthenticationFilter |N/A  |
-|FORM_LOGIN_FILTER | UsernamePasswordAuthenticationFilter|http/form-login  |
-|BASIC_AUTH_FILTER |BasicAuthenticationFilter |http/http-basic |
-|SERVLET_API_SUPPORT_FILTER |SecurityContextHolderAwareRequestFilter |http/@servlet-api-provision|
-|JAAS_API_SUPPORT_FILTER |JaasApiIntegrationFilter |http/@jaas-api-provision|
-|REMEMBER_ME_FILTER |RememberMeAuthenticationFilter |http/remember-me |
-
-
-配置自定义的安全管理
-通过继承
-WebSecurityConfigurerAdapter 
-添加新的过滤器链来处理。
-
-spring-security安全处理链需要一个匹配的路径，一个请求只会匹配一个路径，一旦匹配某个处理链，其他的链就不会再处理。不过，如果需要细化的话，可以通过在HttpSecurity中配置更细化的路径。
 ```java
-
-@Configuration@Order(SecurityProperties.BASIC_AUTH_ORDER - 10)public class ApplicationConfigurerAdapter extends WebSecurityConfigurerAdapter {
+@Configuration
+//顺序很重要，必须定义顺序，具体添加在那个位置根据业务情况。
+@Order(SecurityProperties.BASIC_AUTH_ORDER - 10)
+@EnableWebSecurity
+MySecurityChainConfig extends WebSecurityConfigurerAdapter{
   @Override
   protected void configure(HttpSecurity http) throws Exception {
     http.antMatcher("/foo/**")
       .authorizeRequests()
-        .antMatchers("/foo/bar").hasRole("BAR")
+        .antMatchers("/foo/bar").hasRole("BAR")//这里细化了对具体路径的处理
         .antMatchers("/foo/spam").hasRole("SPAM")
         .anyRequest().isAuthenticated();
-  }}
-```
-
-
-
-
-
-```java
-
-public interface AuthenticationManager {
-
-  Authentication authenticate(Authentication authentication)
-    throws AuthenticationException;
-
-}
-```
-认证处理器，
-返回值有三种情况：
-如果返回认证异常，我们可以捕获后跳转到认证页面，比如登入页面，或者返回认证错误页面，在接口调用时，可以返回401响应等等
-
-
-
-ProviderManager
-实现类，但是不直接处理，而是将具体的认证处理委托给实现
-AuthenticationProvider 接口的实例。
-这里ProviderManager可以管理多个AuthenticationProviders.
-当遇到不支持的认证类型，直接跳过不去处理。
-
-```java
-
-public interface AuthenticationProvider {
-
-        Authentication authenticate(Authentication authentication)
-                        throws AuthenticationException;
-
-        boolean supports(Class<?> authentication);
-
+  }
 }
 ```
 
-这里与AuthenticationManager接口差不多，但是多了一个接口supports,可以通过这个接口指定支持认证的类型，也就是说可以通过实现这个接口，排除一些我们不需要去进行认证的一些认证类型。
-
-比如我们通过某个过滤器 做了认证处理后，返回的认证结果，他的结果类型是不一样的，在下一个过滤器做处理的时候，我们可以根据这个类型，判断是否继续处理。
-
-ProviderManager可以有一个父的 AuthenticationProvider实现，当所有的子provider都返回空的时候，就会看这个父类怎么处理，如果没有，则抛出认证异常。
 
 
-![19992a59bb9ffbc0b14ed45613139986.png](en-resource://database/404:1)
-
-
-
-这里每个providerManager都可以对某一个特定的资源做安全处理，比如路径/admin/* 或者 /account/* ,然后可以有一个父的来处理/* 或者说是一个兜底的处理，可以返回一个友好的处理，比如返回一个认证处理失败页面。
-
-
-
-
-
-
+#### 配置全局共享对象
 
 
 ```java
 
-@Configurationpublic class ApplicationSecurity extends WebSecurityConfigurerAdapter {
-
+@Configuration
+public class ApplicationSecurity extends WebSecurityConfigurerAdapter {
    ... // web stuff here
-
   @Autowired
   public void initialize(AuthenticationManagerBuilder builder, DataSource dataSource) {
     builder.jdbcAuthentication().dataSource(dataSource).withUser("dave")
       .password("secret").roles("USER");
   }
-
 }
 ```
-这是在spingboot中去配置一个全局的 authenticationManger
-
-
-
-
-
-
-
 
 
 ### security-cas
@@ -592,3 +600,5 @@ authenticationProvider
 认证信息保存 tokenRepositery
 
 认证页面
+
+
