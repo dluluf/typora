@@ -38,6 +38,36 @@ Spring-Security 安全处理是基于Servlet Filter 来实现的。
 
 
 
+## SpringSecurity 设计原理
+
+> 这是对整个Spring-Security框架的一个总体认识
+>
+> 对理解它的各组件功能、其工作流程和源码分析有很大帮助
+
+- 以Filter为发起，使用FilterChainProxy统领整个安全处理框架。
+
+- 在FilterChainProxy中根据请求路径，选择具体的securityFilterChain实现（即关于安全的filter实现），处理安全逻辑
+
+- 每个security filter,作用不同。（需要关注这里filter的顺序）
+
+  - 有的则进行一些通常安全的校验
+
+    - 例如：`CsrfFilter`
+
+  - 有的根据RequestMatcher,判断本filter是否尝试去处理，如果是，则封装认证信息成具体token类型，然后调用`authenticationManager` 进行具体的认证处理；
+
+    - 例如：`UsernamePasswordAuthenticationFilter`
+
+  - 有的对请求是否认证或者是否成功，通过对异常的判断，来进行处理。比如：重定向到登入页面。
+
+    - 例如：ExceptionTranslationFilter
+
+      ​			该filter通过对 `AuthenticationException`的判断，然后调用`AuthenticationEntryPoint` 接口的 `commence` 方法进行处理。
+
+      ​            
+
+
+
 
 
 ## Security 一些重要组件
